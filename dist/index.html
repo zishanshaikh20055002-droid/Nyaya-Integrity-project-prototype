@@ -74,7 +74,7 @@
         <div class="sidebar-foot">DECISION SUPPORT ONLY<br />Human review remains required.</div>
       </aside>
       <main>
-        <header class="topbar"><div class="crumb"><span>Cases</span><i data-lucide="chevron-right" style="width:14px"></i><strong>CR-2026-01842</strong></div><div class="top-actions"><button class="icon-button" title="Search cases"><i data-lucide="search"></i></button><button class="icon-button" title="Notifications"><i data-lucide="bell"></i></button><div class="profile"><div class="avatar">AS</div><span>A. Sharma</span></div></div></header>
+        <header class="topbar"><div class="crumb"><span>Cases</span><i data-lucide="chevron-right" style="width:14px"></i><strong>CR-2026-01842</strong></div><div class="top-actions"><span id="apiStatus" class="badge review" title="Checking local API status">DEMO MODE</span><button class="icon-button" title="Search cases"><i data-lucide="search"></i></button><button class="icon-button" title="Notifications"><i data-lucide="bell"></i></button><div class="profile"><div class="avatar">AS</div><span>A. Sharma</span></div></div></header>
         <div class="content">
           <section class="tab-view active" id="overview">
             <div class="case-head"><div><h1>CR-2026-01842 <span style="font-size:13px;color:#71828f;font-weight:600">State v. R. Kumar</span></h1><p class="sub">Bail application review · District &amp; Sessions Court, Pune · Submitted 31 Oct 2026</p></div><div class="head-actions"><button class="button" title="Export the review"><i data-lucide="download"></i><span>Export brief</span></button><button class="button primary" id="reviewBtn"><i data-lucide="user-check"></i><span>Request review</span></button></div></div>
@@ -96,8 +96,29 @@
       function showTab(id) { views.forEach(v => v.classList.toggle('active', v.id === id)); tabs.forEach(t => t.classList.toggle('active', t.dataset.tab === id)); window.scrollTo({top: 0, behavior: 'smooth'}); }
       tabs.forEach(tab => tab.addEventListener('click', () => showTab(tab.dataset.tab)));
       document.querySelectorAll('[data-tab-target]').forEach(btn => btn.addEventListener('click', () => showTab(btn.dataset.tabTarget)));
-      document.getElementById('reviewBtn').addEventListener('click', function () { this.innerHTML = '<i data-lucide="check"></i><span>Review requested</span>'; this.classList.remove('primary'); this.classList.add('button'); lucide.createIcons(); });
-      document.getElementById('addEvidence').addEventListener('click', function () { this.innerHTML = '<i data-lucide="check"></i><span>Registration queued</span>'; lucide.createIcons(); });
+      const apiStatus = document.getElementById('apiStatus');
+      const caseId = 'CR-2026-01842';
+      async function api(path, options = {}) {
+        const response = await fetch(`/api${path}`, { headers: { 'Content-Type': 'application/json' }, ...options });
+        if (!response.ok) throw new Error('API unavailable');
+        return response.json();
+      }
+      async function checkApi() {
+        try { await api('/health'); apiStatus.textContent = 'LIVE API'; apiStatus.className = 'badge verified'; apiStatus.title = 'FastAPI + SQLite pipeline connected'; }
+        catch (_) { apiStatus.textContent = 'DEMO MODE'; apiStatus.className = 'badge review'; apiStatus.title = 'Static demo data; run the local API for persistence'; }
+      }
+      document.getElementById('reviewBtn').addEventListener('click', async function () {
+        try { await api(`/cases/${caseId}/review-requests`, { method: 'POST', body: JSON.stringify({ requested_by: 'A. Sharma', note: 'Human review requested from dashboard.' }) }); }
+        catch (_) {}
+        this.innerHTML = '<i data-lucide="check"></i><span>Review requested</span>'; this.classList.remove('primary'); lucide.createIcons();
+      });
+      document.getElementById('addEvidence').addEventListener('click', async function () {
+        const payload = btoa('Interview demonstration evidence registered from Nyaya Integrity Console.');
+        try { await api(`/cases/${caseId}/evidence`, { method: 'POST', body: JSON.stringify({ filename: 'dashboard-demo-note.txt', media_type: 'text/plain', content_b64: payload, submitted_by: 'A. Sharma' }) }); this.innerHTML = '<i data-lucide="check"></i><span>Evidence registered</span>'; }
+        catch (_) { this.innerHTML = '<i data-lucide="circle-alert"></i><span>Run local API</span>'; }
+        lucide.createIcons();
+      });
+      checkApi();
     </script>
   </body>
 </html>
